@@ -1,0 +1,36 @@
+{
+  "summary": "Iteration 4 (precision 0.001g + drops/tetes converter + IDR currency) fully verified: backend 28/28 pytest PASS (9 new feature tests + 19 regression), frontend 36/36 checks PASS across 4 Playwright runs. PRECISION: weight inputs accept 3 decimals (Bergamot 1.375 -> live 14.7% of formula, header '9.375 g total'), dashboard shows '9.000 g concentrate', builder header '9.000 g total', lab sheet rows X.XXX g, calculator 18.000/82.000/100.000 g. DROPS: per-row g/drops toggle works - Bergamot 1g -> 20 drops with hint '= 1.000 g · 0.05 g/drop'; typing 30 drops -> 1.5g and live 15.8%; toggling back shows 1.5; Ambroxan custom factor 0.045 -> 33.3 drops with hint '= 1.500 g · 0.045 g/drop'; picker list shows each material's g/drop factor + IDR price. DROPS BACKEND: POST /api/ingredients accepts/persists dropWeightGrams (custom 0.033 verified via GET), defaults to 0.05, rejects 0 and >1 with 422; all 5 seeded materials return correct factors (Ambroxan 0.045). IDR: seed migration confirmed (Bergamot 12500/g etc.); cards show 'Rp 12.500,00/g'; add-material modal labeled 'Cost / gram (Rp)'; UI-created material TEST_UI_Sandalwood (8750/g, 0.062 g/drop) persists and renders 'Rp 8.750,00/g' + '0.062 g/drop' on card; calculator HPP 'Rp 104.800,00' (18g x 52400/9, mathematically exact); lab sheet HPP 'Rp 52.400,00'; settings currency 'IDR (Rp)'. CSV EXPORT: downloads velvet-cedar-lab-sheet.csv with Drops column, Cost (IDR) column with Rp-formatted values, and 'HPP (raw material cost),\"Rp 52.400,00\"' total line (full content verified). REGRESSION: login, IFRA red alert on Bergamot (2.00% vs 0.40%), draft caching banner (edit -> reload -> banner -> restore 2 -> discard -> back to 1) all PASS. No new bugs found.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/ingredients", "issue": "No DELETE endpoint for ingredients or formulas, so test-created data accumulates in the shared DB (9 materials now). Not a user-facing bug."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/test_reports/iteration_4.json", "/app/test_reports/pytest/pytest_results.xml", "/app/backend/tests/test_iteration4_drops_idr.py", "/app/backend/tests/test_aromaform_api.py"],
+  "action_items": [
+    "Cleanup test-created data (no delete endpoints exist; remove directly from MongoDB if a pristine DB is needed): ingredients TEST_Orris_61eb57, TEST_DropMat_5c4647, TEST_DefaultDrop_aa453e, TEST_UI_Sandalwood; formulas formula_ad227b22237b (Velvet Cedar Copy), formula_5a5640386733 (Velvet Cedar v1.1), formula_2d4f640b2942 (TEST_Formula_d911c2). Seeded formula_2db549afe2c3 restored to pristine state (notes + weights verified).",
+    "Optional: consider DELETE /api/ingredients/{id} and DELETE /api/formulas/{id} for data hygiene.",
+    "No fixes required - all iteration 4 features verified working."
+  ],
+  "critical_code_review_comments": [
+    "src/format.ts is a clean single source of truth: formatGrams (toFixed(3)), formatIDR ('.' thousands / ',' decimals), dropsToGrams (mg-rounded), gramsToDrops (tenths). All screens/exports consume it consistently - no drift found.",
+    "Drops unit toggle is correctly UI-local state (unitByItem); stored weightGrams always stays grams - verified by toggling 30 drops -> 1.5g -> back to g shows 1.5.",
+    "Backend seed migration (server.py:182-194) is idempotent: only upgrades legacy USD-scale costs (<100) and backfills missing dropWeightGrams; re-runs are safe. Ambroxan=0.045 custom factor seeded correctly.",
+    "CSV export (labsheet.ts) properly csv-escapes Rp values containing commas; HPP total line matches spec exactly.",
+    "Note: calculator 'Rp 4.712,00' in the request was a format example only; actual 100g@18% Velvet Cedar cost is Rp 104.800,00 (18g x weighted avg 5822.22/g) - verified exact.",
+    "Two test-check false negatives during the run were my own case-sensitive innerText checks vs CSS text-transform:uppercase labels; re-verified case-insensitively as PASS. Not app bugs."
+  ],
+  "updated_files": ["/app/backend/tests/test_iteration4_drops_idr.py"],
+  "success_rate": {"backend": "100% (28/28)", "frontend": "100% (36/36 checks across 4 Playwright runs)"},
+  "seed_data_creation": "Created during testing (listed in action_items for cleanup): 3 TEST_ ingredients via API, 1 TEST_UI_Sandalwood via UI, 2 formula duplicates + 1 TEST_ formula via regression suite. Seeded Velvet Cedar notes were briefly modified by the old regression suite and restored to the original text; seeded weights verified 1/2/3/1.5/1.5.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration 4 features (3-decimal precision, drops converter with per-material dropWeightGrams, IDR currency) all PASS. Backend tests need EXPO_BACKEND_URL exported (shell env lacks it): export EXPO_BACKEND_URL=$(grep EXPO_PUBLIC_BACKEND_URL /app/frontend/.env | cut -d= -f2). UI: Bergamot item id = item_eb0cdc8dbf, Ambroxan = item_3a5abb5219 (from DOM, may change if formula re-seeded). Tab bar is NOT visible on the formula screen - click formula-back-button before tab-* selectors. Use :visible for stacked-screen testids. DB currently has 9 ingredients (4 TEST_* pending cleanup) and 4 formulas (3 test-created pending cleanup). Labels with textTransform:uppercase render uppercase in innerText - match case-insensitively.",
+  "rca_of_issue": "No bugs found this iteration. All requested feature checks passed on first verification."
+}

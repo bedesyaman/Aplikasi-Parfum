@@ -1,0 +1,33 @@
+{
+  "summary": "Iteration 3 bugfix verification (frontend only): ALL 4 fixed bugs verified PASS. (1) Sign-out: settings-signout-button opens in-app modal (settings-signout-modal); cancel dismisses and stays on Settings; confirm signs out and RouteGate redirects to /login. (2) Theme toggle: immediate full-app repaint (settings bg rgb(251,251,249)->rgb(18,18,18), dashboard repaints too), settings-theme-value flips Light/Dark, persists across page reload via 'aromaform_theme' hydration; left back on LIGHT as requested. (3) Share: formula-share-button no longer throws - inline formula-notice 'Sharing is not available in this browser — the formula was copied to your clipboard.' appears, zero page errors / no red overlay. (4) Back navigation: duplicate and new-version now router.push - back button returns to the original formula (formula_2db549afe2c3) with ZERO 'GO_BACK not handled' warnings; fresh deep-link to /formula/<id> in a new tab falls back to the tabs dashboard. Sanity: login, dashboard, IFRA red alert on Bergamot (1 warning row), calculator math (100g@18% -> 18.00g oil / 82.00g alcohol) all still PASS - no regressions.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/test_reports/iteration_3.json"],
+  "action_items": [
+    "Clean up test-created formula copies in DB: formula_f21eba9f453f (Velvet Cedar Copy v1.0), formula_3defd2e99813 (Velvet Cedar Copy v1.0), formula_d78a4524c992 (Velvet Cedar v1.1), formula_352a21cbb905 (Velvet Cedar v1.1). Seeded formula_2db549afe2c3 untouched.",
+    "Minor testability note (not a user bug): after router.push on web, both stack screens stay mounted in the DOM, so duplicate testIDs exist (hidden + visible). Tests must use :visible selectors. Consider this if E2E selectors ever become flaky.",
+    "No further fixes required - all iteration 2 bugs resolved. App ready to ship from a frontend perspective."
+  ],
+  "critical_code_review_comments": [
+    "theme.ts useSyncExternalStore override store is the correct react-native-web-safe approach; boot hydration in _layout.tsx reads 'aromaform_theme' before first paint - verified working (dark theme survives reload).",
+    "settings.tsx RN Modal confirm is cross-platform safe (replaces Alert.alert no-op on web) - both cancel and confirm paths verified.",
+    "[id].tsx shareFormula try/catch + navigator.clipboard fallback works in a browser without navigator.share; transient notice auto-clears (4s timer) and no uncaught rejection.",
+    "Back button fallback (router.canGoBack() ? back() : replace('/(tabs)')) verified in both in-app push and fresh deep-link scenarios; no unhandled GO_BACK warnings remain.",
+    "Benign: two 401 console errors fired right after sign-out (in-flight react-query refetches without token) - no user impact, not a failure."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (not tested this iteration)", "frontend": "100% (15/15 checks: 4 bugfix verifications incl. sub-paths + 4 sanity checks)"},
+  "seed_data_creation": "Test-created formula copies (listed in action_items for cleanup): formula_f21eba9f453f, formula_3defd2e99813 (duplicates), formula_d78a4524c992, formula_352a21cbb905 (new versions v1.1). No other data created or modified.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All iteration 2 bugs verified fixed. Theme was left on LIGHT. On web, router.push keeps prior screens mounted in DOM - always use ':visible' pseudo-class when selecting testIDs on formula screens (formula-back-button, formula-version-input etc. resolve to 2 elements). Login via login-demo-button. Seeded formula = formula_2db549afe2c3 (Velvet Cedar v1.0, Bergamot IFRA-exceeded row present). 4 copy formulas may still be in DB pending cleanup (see action_items).",
+  "rca_of_issue": "All 4 previously reported bugs confirmed fixed and verified: sign-out (Alert.alert -> RN Modal), theme (Appearance.setColorScheme -> useSyncExternalStore override + boot hydration), share (unguarded Share.share -> try/catch + clipboard fallback + inline notice), back nav (router.replace -> router.push + canGoBack fallback). No new issues found."
+}

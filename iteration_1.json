@@ -1,0 +1,31 @@
+{
+  "summary": "Fresh mobile web preview testing verified email login, dashboard seeded Velvet Cedar data, note balance chart, and responsive four-tab shell. Backend logs showed successful auth and formula/ingredient requests. Deeper automation was partly blocked by duplicate visible text labels and missing testIDs, not a confirmed product failure.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/test_reports/iteration_1.json"],
+  "action_items": [
+    "Add data-testid/testID attributes to login controls, tab triggers, add-material modal fields, calculator inputs, formula actions, and sign-out controls to enable reliable regression coverage.",
+    "Use the required EXPO_BACKEND_URL/configured native fallback naming in the API client; current api.ts only reads EXPO_PUBLIC_BACKEND_URL while frontend/.env provides EXPO_PUBLIC_BACKEND_URL and the requested contract names EXPO_BACKEND_URL.",
+    "Run a follow-up authenticated end-to-end test for formula create/edit/duplicate/share and ingredient save after stable testIDs are added."
+  ],
+  "critical_code_review_comments": [
+    "Several interactive elements have no testID, reducing automated coverage and making duplicate text selectors ambiguous.",
+    "The web API origin fallback avoided the stale formula-atelier CORS issue in this preview, but the native URL fallback does not follow the requested EXPO_BACKEND_URL contract.",
+    "Expo logs contain a root Electron sandbox/React Native DevTools warning; Metro still bundles and serves successfully."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% observed smoke requests", "frontend": "70% (login/dashboard/tabs shell partially verified; deep flows blocked by selector ambiguity)"},
+  "seed_data_creation": "None. Existing seeded Bergamot, Hedione, Iso E Super, Ambroxan, Cedarwood, and Velvet Cedar were observed.",
+  "retest_needed": true,
+  "should_call_test_agent_after_fix": true,
+  "context_for_next_testing_agent": "Credentials were read from /app/memory/test_credentials.md. Fresh login succeeded with studio@aromaform.app. Sign-out was also exercised once and returned to login. No mocked APIs observed.",
+  "rca_of_issue": "Automation ambiguity is caused by missing testIDs and repeated visible labels (for example Velvet Cedar and Raw materials appear more than once), producing strict-mode failures. This is a testability gap rather than confirmed runtime breakage."
+}

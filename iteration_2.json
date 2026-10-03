@@ -1,0 +1,45 @@
+{
+  "summary": "Iteration 2 deep regression: backend 20/20 pytest passed (auth, ingredients CRUD+filters, formulas CRUD, duplicate, duplicate?as_version=true, validation, 401/404 guards). Frontend: login, dashboard seeded data + note balance + tabs, ingredient search/note-filter/add-material end-to-end, calculator live math (100g@18% -> 18.00g oil / 82.00g alcohol, recalc on 250g), IFRA red warning on Bergamot row (2.00% vs 0.40%) + safety panel failure, live recalc on weight edit (3.60%), picker add material, save, lab sheet modal with per-material IFRA status, CSV download (velvet-cedar-lab-sheet.csv), PDF print window opens, duplicate -> 'Velvet Cedar Copy' v1.0, new version -> title unchanged v1.1, and full draft caching flow (unsaved draft card, resume restores with banner, save clears draft) all PASS. Three real bugs found: sign-out broken on web (Alert.alert no-op), theme toggle no-op (Appearance.setColorScheme unsupported on RN-web + stored theme never read at boot), share button throws uncaught red-screen error 'Share is not supported in this browser'.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Settings sign out", "issue": "Sign-out confirm never renders on web: Alert.alert is a no-op on react-native-web, so signOut() is unreachable and the button appears dead. Reference: /app/frontend/app/(tabs)/settings.tsx:40", "testID": "settings-signout-button", "priority": "CRITICAL"},
+      {"component": "Formula share", "issue": "formula-share-button triggers UNCAUGHT error 'Share is not supported in this browser' (Expo red error overlay in dev, unhandled rejection in prod) because shareFormula has no try/catch and navigator.share is unavailable. Reference: /app/frontend/app/formula/[id].tsx:229", "testID": "formula-share-button", "priority": "HIGH"},
+      {"component": "Theme toggle", "issue": "settings-theme-toggle does nothing: theme.ts setColorScheme calls Appearance.setColorScheme which is a no-op on react-native-web (useColorScheme only follows prefers-color-scheme); additionally THEME_KEY 'aromaform_theme' is written but never read at app boot, so persistence is broken too. Reference: /app/frontend/src/theme.ts:63-71, /app/frontend/app/(tabs)/settings.tsx:41-45", "testID": "settings-theme-toggle", "priority": "HIGH"}
+    ],
+    "integration_issues": [
+      {"flow": "Sign out -> login", "issue": "Cannot complete sign-out on web preview due to Alert.alert no-op (see ui_bugs)", "affected_testIDs": ["settings-signout-button"]},
+      {"flow": "Back navigation after duplicate/new-version", "issue": "router.replace empties the back stack; pressing formula-back-button logs 'The action GO_BACK was not handled by any navigator' (dev warning, no visual break, fallback to dashboard worked)", "affected_testIDs": ["formula-back-button", "formula-duplicate-button", "formula-new-version-button"]}
+    ],
+    "design_issues": [
+      {"screen": "Add raw material modal (375px viewport)", "issues": ["Category/note chips sit below the fold inside the pageSheet modal on small mobile screens; modal content requires scrolling before chips are reachable (RN Modal on web renders inline rather than as a fixed overlay, so underlying list content remains visible above the modal while scrolled). Functional but worth a maxHeight/overlay fix."]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_aromaform_api.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Fix sign-out on web: replace Alert.alert in settings.tsx with a cross-platform confirm (RN Modal or Platform.OS === 'web' ? window.confirm : Alert.alert) so settings-signout-button actually signs out.",
+    "Fix theme toggle: replace Appearance.setColorScheme with React state/context override in theme.ts and hydrate scheme from stored 'aromaform_theme' key at boot (currently written but never read).",
+    "Fix share crash: wrap shareFormula in try/catch and fall back to clipboard copy on web when navigator.share is unavailable ([id].tsx:229).",
+    "Optional: after duplicate/new-version use router.dismissTo or push instead of replace to avoid the unhandled GO_BACK warning.",
+    "Optional: make web Modals render as fixed overlays (or constrain height) so modal chips are reachable without scrolling past underlying content.",
+    "Clean up test data left in DB: ingredients TEST Vetiver / TEST_Orris_*, formulas TEST_Formula_b8c8e4, TEST Draft Noir, Velvet Cedar Copy (x2), Velvet Cedar v1.1 (edited during tests: Bergamot 2g + TEST Vetiver added), Velvet Cedar Copy v1.1. Original seeded Velvet Cedar v1.0 = formula_2db549afe2c3 untouched."
+  ],
+  "critical_code_review_comments": [
+    "Alert.alert (settings.tsx:40) and unguarded Share.share ([id].tsx:229) are react-native-web incompatibilities - both fail at runtime on the web preview.",
+    "theme.ts has no state management: setColorScheme relies on Appearance API that RN-web ignores, and the persisted theme key is never read back - theme feature is effectively dead on web.",
+    "api.ts uses same-origin on web + EXPO_PUBLIC_BACKEND_URL on native - matches the contract from iteration 1; no hardcoded URLs found.",
+    "MongoDB _id properly excluded from all API responses; Pydantic validation present; auth guards on all protected routes verified with 401s.",
+    "All interactive elements now carry kebab-case testIDs - iteration 1 testability gap is fully resolved."
+  ],
+  "updated_files": ["/app/backend/tests/test_aromaform_api.py"],
+  "success_rate": {"backend": "100% (20/20)", "frontend": "88% (32/36 checks; 3 confirmed product bugs: sign-out, theme toggle, share)"},
+  "seed_data_creation": "Created during testing (left in DB per request note): ingredient 'TEST Vetiver' ($0.55/g, Base, IFRA 12), ingredient TEST_Orris_* (API test), formulas: TEST_Formula_b8c8e4, Velvet Cedar v1.1 (formula_f6a49fc3f9e9, edited), Velvet Cedar Copy x2, Velvet Cedar Copy v1.1, TEST Draft Noir.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Correct formula IDs (note: 'id' field comes AFTER title in GET /api/formulas JSON): original seeded Velvet Cedar v1.0 = formula_2db549afe2c3, Velvet Cedar v1.1 = formula_f6a49fc3f9e9. Bergamot item id = item_eb0cdc8dbf. On web, RN Modal renders inline (scrollIntoView before clicking modal chips); dashboard cards need scrollIntoView-safe clicking or direct URL navigation after login (token persists in localStorage). CSV export closes the lab-sheet modal on web by design - reopen for PDF test. After router.replace (duplicate/new version), formula-back-button has no back entry - fallback: page.goto(base).",
+  "rca_of_issue": "1) Sign-out dead on web: react-native-web does not implement Alert.alert; confirmSignOut never invokes signOut. Fix: platform-aware confirm. 2) Theme toggle dead: theme.ts setColorScheme -> Appearance.setColorScheme is a no-op on RN-web; useColorScheme only tracks prefers-color-scheme; stored THEME_KEY never hydrated. Fix: context state + boot-time storage read. 3) Share crash: Share.share unsupported in headless/desktop browsers without navigator.share; missing try/catch produces Expo uncaught-error overlay. Fix: try/catch + clipboard fallback."
+}
